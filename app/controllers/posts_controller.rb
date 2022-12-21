@@ -1,51 +1,84 @@
 class PostsController < ApplicationController
-  before_action :set_post, only: [:show, :update, :destroy]
-
-  # GET /posts
+  rescue_from ActiveRecord::RecordNotFound, with: :render_not_found_response
+  rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable_entity_response
+  
   def index
-    @posts = Post.all
-
-    render json: @posts
+    posts = Post.all
+    render json: posts
   end
 
-  # GET /posts/1
   def show
-    render json: @post
+    post = Post.find_by(id: params[:id])
+    render json: post, status: 200
   end
 
-  # POST /posts
+
   def create
-    @post = Post.new(post_params)
-
-    if @post.save
-      render json: @post, status: :created, location: @post
-    else
-      render json: @post.errors, status: :unprocessable_entity
-    end
+    post = Post.create!(new_post_params)
+    render json: post, status: 201
   end
 
-  # PATCH/PUT /posts/1
+
   def update
-    if @post.update(post_params)
-      render json: @post
-    else
-      render json: @post.errors, status: :unprocessable_entity
-    end
+    post = Post.find_by(id: params[:id])
+    if session[:user_id] === post[:user_id]
+      post.update!(
+        comment_body: params[:comment_body],
+        tickets: params[:tickets]
+      )
+      render json: post, status: 200
+    end 
   end
+        
 
-  # DELETE /posts/1
   def destroy
-    @post.destroy
+    post = Post.find_by(id: params[:id])
+    if session[:user_id] === post[:user_id]
+      post.destroy
+      head :no_content
+    end
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_post
-      @post = Post.find(params[:id])
-    end
 
-    # Only allow a list of trusted parameters through.
-    def post_params
-      params.require(:post).permit(:body, :tickets, :for_sale, :user_id, :concert_id)
-    end
+  def new_post_params
+    params.permit(:comment_body, :for_sale, :tickets, :concert_id, :user_id)
+  end
+
+  def render_unprocessable_entity_response(invalid)
+    render json: { errors: invalid.record.errors.full_messages }, status: :unprocessable_entity
+  end
+
+  def render_not_found_response(invalid)
+    render json: { error: invalid.message }, status: :not_found
+  end
+
+  # create a render_unauthorized_response
+
+
 end
+
+
+  # # original write-up for create
+  # def create
+  #   post = Post.create!(new_post_params)
+
+  #   if post.valid? 
+  #     render json: post, status: 200
+  #   else
+  #     render json: { errors: post.errors }, status: :unprocessable_entity
+  #   end
+  # end
+
+
+  # def update
+  #   post = Post.find_by(id: params[:id])
+  #   user = User.find_by(id: session[:user_id])
+  #   if session[:user_id] === params[:user_id]
+  #     post.update(
+  #       comment_body: params[:comment_body],
+  #       tickets: params[:tickets]
+  #     )
+  #     render json: post, status: 200
+  #     end 
+  #   end
