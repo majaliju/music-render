@@ -1,5 +1,4 @@
 class Concert < ApplicationRecord
-  belongs_to :venue
   belongs_to :artist
   
   has_many :posts
